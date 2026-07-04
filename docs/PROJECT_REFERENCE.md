@@ -16,19 +16,26 @@ festivals/events, local cuisine and travel tips. Content is **database-first**
 and cached; AI is used only to fill gaps or enrich, then persisted.
 
 ### Current Status
-🟢 **Step 1 complete — Project foundations scaffolded.** App builds, typechecks
-and lints clean. No features implemented yet.
+🟢 **Step 3 complete — Authentication working end-to-end.** Better Auth
+(email/password, **bcrypt** hashing) wired to Neon via the Prisma adapter;
+register/login/logout, sessions, protected `/dashboard` + `/profile`, and edge
+route-protection all verified against the live DB. Ready for Step 4 (Landing) or
+Step 5 (Search + AI).
 
 ### Completed Features
 - [x] **Step 1 — Scaffold & foundations**: Next.js 16 + TypeScript (strict) app,
   MUI v9 Material Design theme (light, Poppins, brand palette), Prisma 7 client
   with node-postgres driver adapter, validated env module, feature-based folder
   structure, ESLint (no `any`), `.env.example`, docs.
+- [x] **Step 2 — Database schema**: 11 models + relations, `ContentSource` enum,
+  cascade rules, indexes. Migration `init` applied to Neon and verified.
+- [x] **Step 3 — Authentication**: Better Auth + Prisma adapter, bcrypt password
+  hashing, `Session`/`Account`/`Verification` models + migration, `/api/auth/*`
+  handler, login/register pages (RHF + Zod), sign-out, `requireSession` guard and
+  `proxy.ts` edge protection. Verified: sign-up 200, session 200, bad login 401,
+  bcrypt hash `$2b$12$…` in DB.
 
 ### Pending Features
-- [ ] **Step 2 — Database schema**: all 11 tables + relations, first migration.
-- [ ] **Step 3 — Authentication** (Better Auth): register/login/logout, protected
-  routes, profile.
 - [ ] **Step 4 — Landing page**.
 - [ ] **Step 5 — Search flow + AI engine** (DB-first → cache → AI fallback → persist).
 - [ ] **Step 6 — User dashboard** (search, recent, saved, profile).
@@ -76,10 +83,27 @@ reusable components and utilities only. Strict TypeScript, no `any`.
 ```
 
 ### Database Schema
-Not yet defined. Datasource (`postgresql`) + generator only. Planned tables
-(Step 2): `users`, `destinations`, `attractions`, `hidden_gems`,
-`heritage_story`, `cultural_experiences`, `local_food`, `travel_tips`,
-`local_events`, `search_history`, `saved_places`.
+Defined in `prisma/schema.prisma` (PascalCase models `@@map`-ed to snake_case
+tables). String `cuid()` IDs throughout. Enum `ContentSource { SEED, AI_GENERATED }`.
+
+| Model (table) | Key fields | Relations |
+| --- | --- | --- |
+| `User` (`users`) | name, email(unique), emailVerified, image, timestamps | → SearchHistory, SavedPlace |
+| `Destination` (`destinations`) | slug(unique), name, city, region, country, summary, description, bestSeason, heroImageUrl, source | owns all content below; ← SearchHistory, SavedPlace |
+| `Attraction` (`attractions`) | title, description, category, area, bestTime, entryInfo, imageUrl | → Destination (cascade) |
+| `HiddenGem` (`hidden_gems`) | title, description, whyLocalsLove, whyTouristsMiss, bestVisitingTime, photographyTips, nearbyFood | → Destination (cascade) |
+| `HeritageStory` (`heritage_story`) | title, story, era | **1–1** Destination (cascade) |
+| `CulturalExperience` (`cultural_experiences`) | title, description, duration, estimatedCost, idealTime, localTips, familyFriendly, bookingRequired, authenticityRating(1–5) | → Destination (cascade) |
+| `LocalFood` (`local_food`) | name, description, whereToTry, type, priceRange, mustTry | → Destination (cascade) |
+| `TravelTip` (`travel_tips`) | category, tip | → Destination (cascade) |
+| `LocalEvent` (`local_events`) | title, description, venue, startDate, endDate, sourceUrl, fetchedAt, expiresAt | → Destination (cascade); cache fields |
+| `SearchHistory` (`search_history`) | query, normalizedQuery, destinationId? | → User (cascade), Destination (setNull) |
+| `SavedPlace` (`saved_places`) | notes; unique(userId,destinationId) | → User (cascade), Destination (cascade) |
+
+Auth satellite models **added in Step 3** (tables `sessions`, `accounts`,
+`verifications`): `Session` (token, expiresAt, ip/agent, userId), `Account`
+(providerId, accountId, `password` = bcrypt hash for email/password, tokens),
+`Verification` (identifier, value, expiresAt). All cascade on user delete.
 
 ### Environment Variables
 | Variable | Purpose |
@@ -92,12 +116,26 @@ Not yet defined. Datasource (`postgresql`) + generator only. Planned tables
 Validated at runtime by `src/lib/env.ts` (fails fast on missing/invalid).
 
 ### API Endpoints
-Planned (not yet implemented): `/api/auth/register`, `/api/auth/login`,
-`/api/generate`, `/api/history`, `/api/profile`.
+- **Auth (live)** — served by Better Auth under the catch-all
+  `src/app/api/auth/[...all]/route.ts`: `POST /api/auth/sign-up/email`,
+  `POST /api/auth/sign-in/email`, `POST /api/auth/sign-out`,
+  `GET /api/auth/get-session`, plus other Better Auth routes. (These supersede the
+  spec's `/api/auth/register` + `/login` names — approved deviation.)
+- **Planned**: `/api/generate`, `/api/history`, `/api/profile`.
 
 ### Authentication Flow
-Not yet implemented (Step 3, Better Auth). Planned: register → login → session
-cookie → protected dashboard/profile → logout.
+1. **Register** — `RegisterForm` → `authClient.signUp.email` → Better Auth hashes
+   the password with **bcrypt** (cost 12), creates `User` + `Account`, opens a
+   `Session`, sets the session cookie.
+2. **Login** — `LoginForm` → `authClient.signIn.email` → verifies bcrypt hash,
+   opens a session.
+3. **Session** — cookie-based, 7-day expiry, refreshed daily. Read on the server
+   via `getServerSession()` / `requireSession()` (`src/lib/session.ts`).
+4. **Protection** — `src/proxy.ts` (edge) optimistically redirects based on the
+   session cookie; Server Components additionally call `requireSession()` for a
+   real check. Guards `/dashboard` and `/profile`; authed users are bounced off
+   `/login` + `/register`.
+5. **Logout** — `SignOutButton` → `authClient.signOut` → clears session → `/login`.
 
 ### AI Flow
 Not yet implemented (Step 5). Planned: on cache miss, call OpenAI Responses API
@@ -145,15 +183,21 @@ Foundations → Database.
 `main`
 
 ## Last Completed Task
-Step 1 — Project scaffold & foundations (build/typecheck/lint green).
+Step 3 — Authentication (Better Auth + bcrypt) working end-to-end and verified
+against Neon.
 
 ## Next Task
-Step 2 — Define the full Prisma relational schema (11 tables + relations) and
-create the first migration. **Requires a real `DATABASE_URL` (Neon).**
+Step 4 — Landing page (Material Design hero + search entry), **or** jump to
+Step 5 — Search flow + AI engine (DB-first → cache → OpenAI fallback → persist).
+Recommend Step 5 next since it's the product core; landing polish can follow.
 
 ## Known Issues
-- `.env` currently holds placeholder values; DB connection untested until a real
-  Neon `DATABASE_URL` is provided (needed for Step 2).
+- The developer's **local network blocks outbound port 5432**, so
+  `prisma migrate` can't run from their machine (P1001). Workaround in use:
+  migrations run from an unblocked environment. Alternatives: mobile hotspot, or
+  paste `migrate diff` SQL into Neon's browser SQL Editor + `migrate resolve`.
+- Minor: node-postgres prints an SSL/libpq-compat deprecation warning on connect
+  (`sslmode=require`); harmless — connection succeeds.
 
 ## Technical Debt
 - None yet. (Note: `create-next-app` installed **Next 16**, not 15 as originally
@@ -164,7 +208,9 @@ create the first migration. **Requires a real `DATABASE_URL` (Neon).**
 2. Set env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
    `OPENAI_API_KEY`.
 3. Build runs `postinstall` → `prisma generate`, then `next build`.
-4. Run `prisma migrate deploy` against Neon (added to the pipeline in Step 2+).
+4. Apply migrations to Neon with `npm run db:deploy` (`prisma migrate deploy`) —
+   from Vercel's build or any network that isn't blocking port 5432.
+5. Set `BETTER_AUTH_URL` to the deployed origin (e.g. `https://<app>.vercel.app`).
 
 ## Future Improvements
 - Consider `@prisma/adapter-neon` (serverless driver) for edge/serverless perf.
@@ -187,9 +233,29 @@ Created/rewrote: `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`
 `src/features/README.md`.
 Removed: CNA demo assets (`page.module.css`, `*.svg` in `public/`).
 
+## Files Modified (Step 3 — Auth)
+Created: `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/lib/session.ts`,
+`src/proxy.ts`, `src/app/api/auth/[...all]/route.ts`,
+`src/app/(auth)/login/page.tsx`, `src/app/(auth)/register/page.tsx`,
+`src/app/dashboard/page.tsx`, `src/app/profile/page.tsx`,
+`src/features/auth/schemas.ts`, `src/features/auth/components/{AuthCard,LoginForm,RegisterForm,SignOutButton}.tsx`,
+`src/theme/LinkBehavior.tsx`.
+Updated: `prisma/schema.prisma` (auth models + User relations), `src/theme/theme.ts`
+(LinkBehavior defaults), `src/app/page.tsx` (auth CTAs). Added migration
+`20260704071320_add_auth_models`.
+
 ## Database Migration History
-None yet.
+- `20260704070303_init` — **applied** ✅. All 11 domain tables + `ContentSource`
+  enum, relations, cascades, indexes.
+- `20260704071320_add_auth_models` — **applied** ✅. Better Auth tables
+  `sessions`, `accounts`, `verifications` + relations to `users`.
+
+> ⚠️ Prisma 7 gotcha: `prisma migrate dev` did **not** reliably refresh the
+> generated client after adding models — run `npm run db:generate` (or rebuild)
+> after any schema change, or Better Auth throws "Model account does not exist".
 
 ## Testing Status
-No automated tests yet. Manual verification: `npm run typecheck`, `npm run lint`,
-`npm run build` all pass.
+No automated test suite yet. Manual verification (all green): `prisma validate`,
+`npm run typecheck`, `npm run lint`, `npm run build`. **Auth E2E against Neon:**
+sign-up → 200 + session; get-session → 200; wrong password → 401; DB password
+stored as bcrypt `$2b$12$…`. Test users cleaned up afterward.

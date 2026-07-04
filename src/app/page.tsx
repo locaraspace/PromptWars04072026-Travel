@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
 
 /**
@@ -46,11 +46,14 @@ export default function Home() {
             Discover authentic destinations beyond typical tourism — hidden gems,
             heritage stories and living local culture.
           </Typography>
-          <Chip
-            label="Step 1 complete · Foundations ready"
-            color="secondary"
-            variant="outlined"
-          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Button href="/register" variant="contained" size="large">
+              Get started
+            </Button>
+            <Button href="/login" variant="outlined" size="large">
+              Sign in
+            </Button>
+          </Stack>
         </Stack>
       </Container>
     </Box>

@@ -1,4 +1,5 @@
 import { createTheme } from '@mui/material/styles';
+import { LinkBehavior } from '@/theme/LinkBehavior';
 
 /**
  * TravelAI design tokens.
@@ -41,6 +42,16 @@ const theme = createTheme({
     button: { fontWeight: 600, textTransform: 'none' },
   },
   components: {
+    MuiLink: {
+      defaultProps: {
+        component: LinkBehavior,
+      },
+    },
+    MuiButtonBase: {
+      defaultProps: {
+        LinkComponent: LinkBehavior,
+      },
+    },
     MuiCard: {
       defaultProps: { elevation: 0 },
       styleOverrides: {
