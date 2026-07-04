@@ -4,6 +4,7 @@ import CardContent from '@mui/material/CardContent';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import { tokens } from '@/theme/theme';
 
 interface DestinationCardProps {
   slug: string;
@@ -20,8 +21,17 @@ export default function DestinationCard({
   summary,
 }: DestinationCardProps) {
   return (
-    <Card>
-      <CardActionArea href={`/destination/${slug}`}>
+    <Card
+      sx={{
+        height: '100%',
+        transition: 'transform .2s ease, box-shadow .2s ease',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: tokens.shadowHover,
+        },
+      }}
+    >
+      <CardActionArea href={`/destination/${slug}`} sx={{ height: '100%' }}>
         <CardContent>
           <Stack spacing={0.5}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>

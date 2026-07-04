@@ -16,12 +16,12 @@ festivals/events, local cuisine and travel tips. Content is **database-first**
 and cached; AI is used only to fill gaps or enrich, then persisted.
 
 ### Current Status
-🟢 **Step 7 complete — Dynamic events (web search + cache).** Destination pages
-show festivals/events fetched live via the OpenAI `web_search` tool and cached in
-`local_events` (7-day TTL). Verified live: Ayodhya returned 6 real dated events
-(Deepotsav, Ram Navami, Chhath Puja…) in ~19s, cached fresh. **All core features
-(Steps 1–3, 5–7) are done and verified; only Step 4 (landing polish) + Step 8
-(final polish) remain.**
+🟡 **Step 4 implemented — Landing page + UI polish (pending visual confirmation).**
+New marketing landing page (hero image, glass header with menus, feature grid,
+how-it-works, destinations strip, CTA, footer), shared `AppHeader` on authed pages,
+softer card shadows + hover lift, restyled dashboard/profile. typecheck + lint
+green; a local build needs `.env` present (env.ts validates at import). All core
+features (Steps 1–3, 5–7) done and verified live.
 
 ### Completed Features
 - [x] **Step 1 — Scaffold & foundations**: Next.js 16 + TypeScript (strict) app,
@@ -46,8 +46,13 @@ show festivals/events fetched live via the OpenAI `web_search` tool and cached i
   feature (schema/generate/service), `POST /api/events`, `EventsSection` on the
   destination page, 7-day cache in `local_events`. Verified live (6 real events).
 
+- [~] **Step 4 — Landing page + UI polish (pending visual confirmation)**: hero
+  image + glass header/nav, feature/how-it-works/destinations sections, footer,
+  `AppHeader` on authed pages, card shadows + hover animation, restyled
+  dashboard/profile.
+
 ### Pending Features
-- [ ] **Step 4 — Landing page** (marketing polish — deferred to last per user).
+- [ ] **Step 4 — user visual confirmation** (run `npm run dev` with `.env` set).
 - [ ] **Step 8 — Final polish**: custom 404/not-found, loading/empty-state sweep,
   deploy config, README deploy notes.
 - [ ] **Step 5 — Search flow + AI engine** (DB-first → cache → AI fallback → persist).
@@ -307,6 +312,14 @@ Created: `src/features/events/content-schema.ts`,
 `src/app/api/events/route.ts`.
 Updated: `src/app/destination/[slug]/page.tsx` (EventsSection + cached events).
 No migration — uses the existing `local_events` table.
+
+## Files Modified (Step 4 — Landing + UI polish)
+Created: `src/components/layout/{LandingHeader,AppHeader,Footer}.tsx`.
+Rewrote: `src/app/page.tsx` (full landing), `src/app/dashboard/page.tsx` (header +
+search hero). Updated: `src/theme/theme.ts` (shadow tokens, card/button polish,
+AppBar), `src/features/destinations/components/DestinationCard.tsx` (hover lift),
+`src/app/profile/page.tsx` + `src/app/destination/[slug]/page.tsx` (AppHeader).
+Images: Unsplash direct URLs via CSS backgrounds (no next/image config).
 
 ## Database Migration History
 - `20260704070303_init` — **applied** ✅. All 11 domain tables + `ContentSource`

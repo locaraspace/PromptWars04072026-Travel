@@ -15,6 +15,9 @@ export const tokens = {
   surface: '#FFFFFF',
   borderRadius: 12,
   fontFamily: 'var(--font-poppins), "Poppins", "Helvetica", "Arial", sans-serif',
+  // Soft, layered shadows for depth (Airbnb/Google-Travel feel).
+  shadowResting: '0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.06)',
+  shadowHover: '0 8px 16px rgba(16, 24, 40, 0.08), 0 16px 32px rgba(16, 24, 40, 0.12)',
 } as const;
 
 const theme = createTheme({
@@ -57,16 +60,28 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: tokens.borderRadius,
-          border: '1px solid rgba(0, 0, 0, 0.08)',
+          border: '1px solid rgba(16, 24, 40, 0.06)',
           backgroundColor: tokens.surface,
+          boxShadow: tokens.shadowResting,
         },
       },
     },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { borderRadius: tokens.borderRadius },
+        root: {
+          borderRadius: tokens.borderRadius,
+          transition:
+            'transform .18s ease, box-shadow .18s ease, background-color .18s ease',
+          '&.MuiButton-contained:hover': {
+            boxShadow: '0 6px 16px rgba(16, 24, 40, 0.18)',
+            transform: 'translateY(-1px)',
+          },
+        },
       },
+    },
+    MuiAppBar: {
+      defaultProps: { elevation: 0, color: 'inherit' },
     },
     MuiPaper: {
       styleOverrides: {
