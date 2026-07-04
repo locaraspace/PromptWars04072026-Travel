@@ -5,13 +5,16 @@
 > touches runtime behaviour, exercised live against the **real Neon database** and
 > the **OpenAI API** via HTTP requests and direct DB queries.
 >
-> This is a manual/integration test log. Automated unit/e2e suites are **not yet**
-> in the project (see "Gaps & next steps" at the end).
+> This log covers two layers: (1) an **automated suite** (Vitest unit tests +
+> Playwright e2e, run in CI — see §9), and (2) **manual/integration verification**
+> performed live against the real Neon DB and OpenAI API (§§1–8).
 
 - **Last updated:** 2026-07-04
 - **Environment:** Next.js 16, Node 24, Neon PostgreSQL (pooled), OpenAI Responses API
-- **Method:** `npm run typecheck` / `npm run lint` / `npm run build`; `curl` against
-  a local production server (`npm start`); direct SQL via the Prisma pg adapter.
+- **Automated:** `npm test` (Vitest, **38 tests / 9 files — all passing**),
+  `npm run test:e2e` (Playwright smoke tests), CI via GitHub Actions.
+- **Manual method:** `npm run typecheck` / `npm run lint` / `npm run build`; `curl`
+  against a local production server (`npm start`); direct SQL via the Prisma pg adapter.
 - **Legend:** ✅ PASS · ❌ FAIL · 🔁 fixed then re-verified
 
 ---
@@ -139,9 +142,35 @@ account (`nandu@gmail.com`), the **Ayodhya** destination (+ children), and its
 
 ---
 
+## 9. Automated test suite
+
+### Unit tests — Vitest (`npm test`) — 38 tests / 9 files, all passing ✅
+Run with mocked Prisma/OpenAI, so they need no DB, network or secrets.
+
+| File | What it covers |
+| --- | --- |
+| `src/lib/slug.test.ts` | `slugify` / `normalizeQuery` (cache-key correctness) |
+| `src/lib/api.test.ts` | `apiSuccess` / `apiError` status + body |
+| `src/features/auth/schemas.test.ts` | register/login validation (password, email, name) |
+| `src/features/search/schemas.test.ts` | search request validation + trimming |
+| `src/features/search/content-schema.test.ts` | AI content shape, nullable fields, rating bounds |
+| `src/features/events/content-schema.test.ts` | events payload, empty list, nullable dates |
+| `src/features/history/saved-service.test.ts` | save toggle on/off, `isSaved` (Prisma mocked) |
+| `src/features/search/service.test.ts` | **cache hit vs AI fallback**, persistence, history resilience |
+| `src/features/events/service.test.ts` | refresh replaces cache, empty-result path, DTO mapping |
+
+### E2E tests — Playwright (`npm run test:e2e`)
+`e2e/landing.spec.ts` — public-surface smoke tests (landing hero + CTAs, sign-in →
+`/login`, get-started → `/register`). No DB/OpenAI needed.
+**First-time setup:** `npx playwright install` (downloads browsers), start the app
+(`npm run dev` or a deployed URL via `PLAYWRIGHT_BASE_URL`), then `npm run test:e2e`.
+
+### CI — GitHub Actions (`.github/workflows/ci.yml`)
+On every push to `main` and every PR: `npm ci` (→ `prisma generate`) →
+`typecheck` → `lint` → **`npm test`** → `build` (with dummy env). E2E is run
+locally/on-demand (it needs a running app + browsers).
+
 ## Gaps & next steps (recommended)
-- **No automated test suite yet.** Recommended: add **Vitest** for unit tests
-  (services: `slug`, `search-service` cache logic, `saved-service` toggle) and
-  **Playwright** for e2e (register → search → save → events). Mock OpenAI in CI.
-- Add request-validation tests for `/api/generate` (invalid/missing `query`).
-- Add a CI workflow running `typecheck` + `lint` + `build` on every PR.
+- Extend Playwright to an authenticated flow (register → search → save → events)
+  against a seeded test DB with a mocked OpenAI endpoint.
+- Add coverage reporting (`@vitest/coverage-v8`) and a coverage gate in CI.

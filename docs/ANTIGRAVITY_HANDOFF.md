@@ -33,9 +33,11 @@ built-in web_search**.
 npm install            # runs prisma generate via postinstall
 cp .env.example .env   # then fill real values
 npm run dev            # http://localhost:3000
-npm run typecheck && npm run lint && npm run build   # all must stay green
+npm run typecheck && npm run lint && npm test && npm run build   # all must stay green
 ```
 Prisma helpers: `npm run db:migrate`, `db:generate`, `db:studio`, `db:deploy`.
+Tests: `npm test` (Vitest, 38 passing), `npm run test:e2e` (Playwright — run
+`npx playwright install` + start the app first). CI: `.github/workflows/ci.yml`.
 
 ## Key files / conventions
 - Design tokens + theme: `src/theme/theme.ts` (primary `#2E7D32`, secondary

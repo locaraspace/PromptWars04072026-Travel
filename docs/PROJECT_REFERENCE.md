@@ -216,7 +216,7 @@ Runtime: `next@16.2.10`, `react@19.2.4`, `@mui/material@9`, `@mui/icons-material
 `pg`, `better-auth`, `zod@4`, `bcrypt`, `react-hook-form`, `@hookform/resolvers`,
 `openai`.
 Dev: `prisma@7`, `dotenv`, `typescript`, `eslint`, `eslint-config-next`,
-`@types/*`.
+`vitest`, `@playwright/test`, `@types/*`.
 
 ## Current Sprint
 Foundations → Database.
@@ -335,7 +335,12 @@ Images: Unsplash direct URLs via CSS backgrounds (no next/image config).
 📋 **Full test record: [`docs/TESTING.md`](./TESTING.md)** (per-feature test cases,
 methods, expected/actual, PASS/FAIL).
 
-No automated test suite yet. Manual verification (all green): `prisma validate`,
+**Automated suite:** Vitest — **38 unit tests / 9 files, all passing** (`npm test`;
+slug, schemas, api helper, saved-service, events-service, search-service cache
+logic — Prisma/OpenAI mocked). Playwright e2e smoke tests (`npm run test:e2e`).
+CI runs typecheck + lint + test + build on push/PR (`.github/workflows/ci.yml`).
+
+Manual verification (all green): `prisma validate`,
 `npm run typecheck`, `npm run lint`, `npm run build`. **Auth E2E against Neon:**
 sign-up → 200 + session; get-session → 200; wrong password → 401; DB password
 stored as bcrypt `$2b$12$…`. Test users cleaned up afterward.
