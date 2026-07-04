@@ -16,11 +16,12 @@ festivals/events, local cuisine and travel tips. Content is **database-first**
 and cached; AI is used only to fill gaps or enrich, then persisted.
 
 ### Current Status
-🟢 **Step 3 complete — Authentication working end-to-end.** Better Auth
-(email/password, **bcrypt** hashing) wired to Neon via the Prisma adapter;
-register/login/logout, sessions, protected `/dashboard` + `/profile`, and edge
-route-protection all verified against the live DB. Ready for Step 4 (Landing) or
-Step 5 (Search + AI).
+🟢 **Step 7 complete — Dynamic events (web search + cache).** Destination pages
+show festivals/events fetched live via the OpenAI `web_search` tool and cached in
+`local_events` (7-day TTL). Verified live: Ayodhya returned 6 real dated events
+(Deepotsav, Ram Navami, Chhath Puja…) in ~19s, cached fresh. **All core features
+(Steps 1–3, 5–7) are done and verified; only Step 4 (landing polish) + Step 8
+(final polish) remain.**
 
 ### Completed Features
 - [x] **Step 1 — Scaffold & foundations**: Next.js 16 + TypeScript (strict) app,
@@ -34,9 +35,21 @@ Step 5 (Search + AI).
   handler, login/register pages (RHF + Zod), sign-out, `requireSession` guard and
   `proxy.ts` edge protection. Verified: sign-up 200, session 200, bad login 401,
   bcrypt hash `$2b$12$…` in DB.
+- [x] **Step 5 — Search + AI engine**: slug/normalize utils, OpenAI client, Zod
+  content schema, DB-first search service with AI fallback + persistence,
+  search-history writes, `POST /api/generate`, `SearchBox`, `/destination/[slug]`
+  full view. **Verified live** (generation + cache hit + persistence).
+- [x] **Step 6 — Dashboard (recent + saved)**: `history-service`, `saved-service`,
+  reusable `DestinationCard`/`DestinationSection`, `SaveButton`, `/api/history`,
+  `/api/saved` (GET+POST toggle), `/api/profile`. Verified live.
+- [x] **Step 7 — Events (dynamic + cached)**: OpenAI `web_search` tool, `events`
+  feature (schema/generate/service), `POST /api/events`, `EventsSection` on the
+  destination page, 7-day cache in `local_events`. Verified live (6 real events).
 
 ### Pending Features
-- [ ] **Step 4 — Landing page**.
+- [ ] **Step 4 — Landing page** (marketing polish — deferred to last per user).
+- [ ] **Step 8 — Final polish**: custom 404/not-found, loading/empty-state sweep,
+  deploy config, README deploy notes.
 - [ ] **Step 5 — Search flow + AI engine** (DB-first → cache → AI fallback → persist).
 - [ ] **Step 6 — User dashboard** (search, recent, saved, profile).
 - [ ] **Step 7 — Events** (dynamic OpenAI web-search refresh + cache).
@@ -121,7 +134,15 @@ Validated at runtime by `src/lib/env.ts` (fails fast on missing/invalid).
   `POST /api/auth/sign-in/email`, `POST /api/auth/sign-out`,
   `GET /api/auth/get-session`, plus other Better Auth routes. (These supersede the
   spec's `/api/auth/register` + `/login` names — approved deviation.)
-- **Planned**: `/api/generate`, `/api/history`, `/api/profile`.
+- **`POST /api/generate`** (live) — auth required. Body `{ query }` (Zod). Runs
+  the DB-first → AI-fallback search flow; returns `{ destination, cached }`.
+  Errors: 401 unauth, 400 validation, 502 generation failure.
+- **`GET /api/history`** (live) — auth. Recent searches, deduped by destination.
+- **`GET /api/saved`** / **`POST /api/saved`** (live) — auth. List bookmarks / toggle
+  a bookmark (`{ destinationId }` → `{ saved }`).
+- **`GET /api/profile`** (live) — auth. Current user's public profile.
+- **`POST /api/events`** (live) — auth. Body `{ slug }`. Web-searches + refreshes
+  and returns cached events (`{ events }`). Errors: 401, 400, 404, 502.
 
 ### Authentication Flow
 1. **Register** — `RegisterForm` → `authClient.signUp.email` → Better Auth hashes
@@ -138,20 +159,36 @@ Validated at runtime by `src/lib/env.ts` (fails fast on missing/invalid).
 5. **Logout** — `SignOutButton` → `authClient.signOut` → clears session → `/login`.
 
 ### AI Flow
-Not yet implemented (Step 5). Planned: on cache miss, call OpenAI Responses API
-to generate journalist-quality content, then persist to DB for reuse.
+`generateDestinationContent(query)` (`src/features/search/generate.ts`) calls the
+OpenAI **Responses API** (`responses.parse`, model `gpt-4.1`) with a
+**structured output** format from the Zod `destinationContentSchema` via
+`zodTextFormat`. A journalist-grade system prompt enforces tone; the schema
+enforces shape (attractions, hidden gems, heritage, cultural experiences, food,
+tips). Result is validated and returned typed.
 
 ### Search Flow
-Not yet implemented (Step 5). Planned: user searches destination → check DB → if
-found, return cached data → if not, generate via AI → save → return.
+`searchDestination({ query, userId })` (`src/features/search/service.ts`):
+1. `normalizeQuery` + `slugify` the query.
+2. Look up `getDestinationBySlug(querySlug)` → **cache hit returns instantly**.
+3. Miss → `generateDestinationContent` → re-check canonical slug → persist a new
+   `Destination` (+ all children) with `source = AI_GENERATED`.
+4. Write a `search_history` row (best-effort; never blocks the response).
+5. Return `{ destination, cached }`.
 
 ### Data Flow
-DB-first. Destination + child content served from PostgreSQL. Only `local_events`
-refreshed dynamically via OpenAI web search and cached.
+DB-first. Destination + child content served from PostgreSQL; AI only fills cache
+misses. Model output is persisted permanently, so repeat searches are pure DB
+reads. **Events** are the exception — refreshed dynamically via the OpenAI
+`web_search` tool and cached in `local_events` with `fetchedAt`/`expiresAt`.
 
 ### Caching Strategy
-Generated content is persisted permanently; future searches reuse cached rows.
-Events are cached with periodic refresh (design in Step 7).
+- **Destinations**: cached by unique `slug`. First search generates + persists;
+  later searches (any user) are cache hits. Canonical-slug re-check avoids
+  near-duplicate rows when phrasing differs.
+- **Events**: cached per destination with a **7-day TTL** (`EVENTS_TTL_MS`).
+  Destination pages render cached events instantly; a user-triggered "Find events"
+  / "Refresh" button calls `POST /api/events` to web-search and replace the set.
+  Refresh replaces sequentially (no interactive transaction — avoids Neon P2028).
 
 ---
 
@@ -183,13 +220,13 @@ Foundations → Database.
 `main`
 
 ## Last Completed Task
-Step 3 — Authentication (Better Auth + bcrypt) working end-to-end and verified
-against Neon.
+Step 7 — Dynamic events via OpenAI `web_search`, cached in `local_events` (7-day
+TTL), rendered on destination pages. Verified live (Ayodhya → 6 real events).
 
 ## Next Task
-Step 4 — Landing page (Material Design hero + search entry), **or** jump to
-Step 5 — Search flow + AI engine (DB-first → cache → OpenAI fallback → persist).
-Recommend Step 5 next since it's the product core; landing polish can follow.
+Final polish (user deferred to last): **Step 4 — Landing page** (marketing hero)
+and **Step 8 — polish** (custom 404, loading/empty sweep, deploy config). Core
+product is feature-complete.
 
 ## Known Issues
 - The developer's **local network blocks outbound port 5432**, so
@@ -244,6 +281,33 @@ Updated: `prisma/schema.prisma` (auth models + User relations), `src/theme/theme
 (LinkBehavior defaults), `src/app/page.tsx` (auth CTAs). Added migration
 `20260704071320_add_auth_models`.
 
+## Files Modified (Step 5 — Search + AI)
+Created: `src/lib/slug.ts`, `src/lib/openai.ts`, `src/lib/api.ts`,
+`src/features/search/{content-schema,schemas,generate,service}.ts`,
+`src/features/search/components/SearchBox.tsx`,
+`src/features/destinations/service.ts`,
+`src/features/destinations/components/DestinationView.tsx`,
+`src/app/api/generate/route.ts`, `src/app/destination/[slug]/page.tsx`.
+Updated: `src/app/dashboard/page.tsx` (embedded SearchBox).
+
+## Files Modified (Step 6 — Dashboard)
+Created: `src/features/history/history-service.ts`,
+`src/features/history/saved-service.ts`,
+`src/features/history/components/{SaveButton,DestinationSection}.tsx`,
+`src/features/destinations/components/DestinationCard.tsx`,
+`src/app/api/history/route.ts`, `src/app/api/saved/route.ts`,
+`src/app/api/profile/route.ts`.
+Updated: `src/app/dashboard/page.tsx` (recent + saved sections),
+`src/app/destination/[slug]/page.tsx` (SaveButton).
+
+## Files Modified (Step 7 — Events)
+Created: `src/features/events/content-schema.ts`,
+`src/features/events/generate.ts`, `src/features/events/service.ts`,
+`src/features/events/components/EventsSection.tsx`,
+`src/app/api/events/route.ts`.
+Updated: `src/app/destination/[slug]/page.tsx` (EventsSection + cached events).
+No migration — uses the existing `local_events` table.
+
 ## Database Migration History
 - `20260704070303_init` — **applied** ✅. All 11 domain tables + `ContentSource`
   enum, relations, cascades, indexes.
@@ -259,3 +323,12 @@ No automated test suite yet. Manual verification (all green): `prisma validate`,
 `npm run typecheck`, `npm run lint`, `npm run build`. **Auth E2E against Neon:**
 sign-up → 200 + session; get-session → 200; wrong password → 401; DB password
 stored as bcrypt `$2b$12$…`. Test users cleaned up afterward.
+**Step 5 E2E against Neon (all green):** sign-in → search "Ayodhya" → AI generated
+full guide + persisted (source `AI_GENERATED`; 5 attractions / 5 cultural / 3
+gems / heritage / 5 food / 6 tips) in ~29s; repeat search → `cached: true` in ~4s
+(no AI call); 2 search-history rows written. Test users cleaned up; Ayodhya kept.
+**Step 6 E2E (all green):** save toggle on→`{saved:true}`/off→`{saved:false}`,
+`GET /api/saved` + `/api/history` return Ayodhya, `/api/profile` returns the user,
+unauthed → 401. **Step 7 E2E (all green):** `POST /api/events` for Ayodhya →
+6 real dated events via web search (~19s) → all cached fresh in `local_events`.
+(DB retains the user's own `nandu@gmail.com` account, Ayodhya + its 6 events.)

@@ -4,11 +4,12 @@
 > without reading the whole codebase. Keep this file short and current.
 
 ## Where we are
-**Steps 1–3 complete.** Foundations scaffolded; 11-model schema + Better Auth
-tables applied to Neon (migrations `init`, `add_auth_models`). **Authentication
-works end-to-end** (Better Auth + bcrypt, verified against Neon): register/login/
-logout, sessions, protected `/dashboard` + `/profile`, `proxy.ts` edge guard.
-Next up: Step 4 (Landing) or Step 5 (Search + AI — the product core).
+**Core complete: Steps 1–3, 5, 6, 7 all done and verified live.** Foundations, DB,
+auth, search + AI engine, dashboard (recent + saved), and dynamic cached events.
+Endpoints: `/api/generate`, `/api/history`, `/api/saved`, `/api/profile`,
+`/api/events`, `/api/auth/*`. `Ayodhya` (+ 6 cached events) and the user's own
+account `nandu@gmail.com` are in the DB. `OPENAI_API_KEY` set. **Only Step 4
+(landing polish) + Step 8 (final polish) remain.**
 
 > Notes: (1) dev's local network blocks port 5432 — run `prisma migrate` from an
 > unblocked env. (2) After any schema change run `npm run db:generate` before
@@ -60,8 +61,23 @@ Prisma helpers: `npm run db:migrate`, `db:generate`, `db:studio`, `db:deploy`.
 - Next 16: middleware is now **`proxy.ts`** (named `proxy` export). Bundled docs
   at `node_modules/next/dist/docs/`.
 
+## Search + AI engine (Step 5) — key files
+- `src/features/search/service.ts` — `searchDestination()` orchestration.
+- `src/features/search/generate.ts` — OpenAI Responses API (`responses.parse`,
+  `gpt-4.1`, `zodTextFormat`) with journalist-grade prompt.
+- `src/features/search/content-schema.ts` — Zod shape for AI output.
+- `src/features/destinations/service.ts` — `getDestinationBySlug` + full include.
+- `src/features/destinations/components/DestinationView.tsx` — renders all sections.
+- `src/app/api/generate/route.ts` — POST handler (auth-gated).
+
+## Gotcha added in Step 7
+- Prisma 7 **interactive** `$transaction(async tx => …)` can throw P2028
+  ("Unable to start a transaction") against the pooled Neon adapter. Prefer
+  sequential ops or the array form `$transaction([...])`. Events service uses
+  sequential writes for this reason.
+
 ## Next task (needs approval before coding)
-**Step 5 — Search flow + AI engine** (recommended, product core): destination
-search → DB-first lookup by slug → return cached data → on miss, generate
-journalist-quality content via OpenAI Responses API → persist → return. Also
-`/api/generate`, search history writes. (Or Step 4 — Landing page — first.)
+Final polish (deferred to last by the user): **Step 4 — Landing page** (premium
+marketing hero) and **Step 8 — polish** (custom `not-found`/404, loading & empty
+states sweep, `BETTER_AUTH_URL`/deploy config, README deploy checklist). The core
+product is feature-complete and deployable now.
