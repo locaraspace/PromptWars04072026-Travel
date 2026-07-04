@@ -1,0 +1,16 @@
+// TravelAI — Prisma schema
+// Datasource + generator only. The relational data model (users, destinations,
+// attractions, hidden_gems, heritage_story, cultural_experiences, local_food,
+// travel_tips, local_events, search_history, saved_places) is added in Step 2.
+//
+// Prisma 7 note: the datasource connection URL is provided via prisma.config.ts
+// (process.env.DATABASE_URL), and the client is emitted to src/generated/prisma.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
