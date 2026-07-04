@@ -70,6 +70,16 @@ Prisma helpers: `npm run db:migrate`, `db:generate`, `db:studio`, `db:deploy`.
 - `src/features/destinations/components/DestinationView.tsx` — renders all sections.
 - `src/app/api/generate/route.ts` — POST handler (auth-gated).
 
+## Step 4 (landing + UI polish) — implemented, pending user confirmation
+Landing page rebuilt with hero image + glass header/nav, feature grid,
+how-it-works, destinations image strip, footer. `AppHeader` added to dashboard/
+profile/destination. Cards have soft shadows + hover lift (see `theme.ts` shadow
+tokens + `DestinationCard`). Images = Unsplash direct URLs via CSS backgrounds.
+typecheck + lint green. **Local `npm run build` needs `.env` present** — `env.ts`
+validates env at import, and the build evaluates route modules. On Vercel this is
+fine (env set). Header logos use `<MuiLink href>` (never `component={Link}` from a
+server component).
+
 ## Gotcha added in Step 7
 - Prisma 7 **interactive** `$transaction(async tx => …)` can throw P2028
   ("Unable to start a transaction") against the pooled Neon adapter. Prefer

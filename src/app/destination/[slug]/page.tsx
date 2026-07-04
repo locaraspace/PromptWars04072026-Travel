@@ -5,6 +5,7 @@ import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { requireSession } from '@/lib/session';
+import AppHeader from '@/components/layout/AppHeader';
 import { getDestinationBySlug } from '@/features/destinations/service';
 import DestinationView from '@/features/destinations/components/DestinationView';
 import SaveButton from '@/features/history/components/SaveButton';
@@ -31,8 +32,9 @@ export default async function DestinationPage({
   ]);
 
   return (
-    <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default', py: 5 }}>
-      <Container maxWidth="md">
+    <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
+      <AppHeader />
+      <Container maxWidth="md" sx={{ py: 5 }}>
         <Stack
           direction="row"
           sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 3 }}
