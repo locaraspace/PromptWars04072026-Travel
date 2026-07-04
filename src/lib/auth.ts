@@ -7,6 +7,22 @@ import { env } from '@/lib/env';
 const BCRYPT_ROUNDS = 12;
 
 /**
+ * Origins Better Auth will accept requests from (CSRF/"Invalid origin" guard).
+ * Includes the configured base URL plus Vercel-provided domains so both the
+ * production alias and per-deployment/preview URLs work without manual updates.
+ */
+function getTrustedOrigins(): string[] {
+  const origins = new Set<string>([env.BETTER_AUTH_URL]);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    origins.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  }
+  if (process.env.VERCEL_URL) {
+    origins.add(`https://${process.env.VERCEL_URL}`);
+  }
+  return [...origins];
+}
+
+/**
  * Better Auth server instance (single source of truth for auth).
  *
  * - Persists via the Prisma adapter (users, sessions, accounts, verifications).
@@ -16,6 +32,7 @@ const BCRYPT_ROUNDS = 12;
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
+  trustedOrigins: getTrustedOrigins(),
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),

@@ -332,6 +332,9 @@ Images: Unsplash direct URLs via CSS backgrounds (no next/image config).
 > after any schema change, or Better Auth throws "Model account does not exist".
 
 ## Testing Status
+📋 **Full test record: [`docs/TESTING.md`](./TESTING.md)** (per-feature test cases,
+methods, expected/actual, PASS/FAIL).
+
 No automated test suite yet. Manual verification (all green): `prisma validate`,
 `npm run typecheck`, `npm run lint`, `npm run build`. **Auth E2E against Neon:**
 sign-up → 200 + session; get-session → 200; wrong password → 401; DB password
